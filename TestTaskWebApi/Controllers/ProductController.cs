@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using TestTaskWebApi.Data;
@@ -12,33 +11,83 @@ namespace TestTaskWebApi.Controllers
     [ApiController]
     public class ProductController : ControllerBase
     {
-        private readonly IProduct _product;
+        private readonly IProduct _repository;
         private readonly IMapper _mapper;
 
         public ProductController(IProduct product, IMapper mapper)
         {
-            _product = product;
+            _repository = product;
             _mapper = mapper;
         }
-        
+
         [HttpGet]
         public ActionResult<IEnumerable<ProductReadDTO>> Get()
         {
-            var productsAll = _product.GetAllProduct();
+            var productsAll = _repository.GetAllProduct();
             return Ok(_mapper.Map<IEnumerable<ProductReadDTO>>(productsAll));
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}", Name = "GetProductID")]
 
         public ActionResult<ProductReadDTO> GetProductID(int id)
         {
-            var productId = _product.GetProductById(id);
+            var productId = _repository.GetProductById(id);
 
             if (productId != null)
             {
-                return Ok(_mapper.Map <ProductReadDTO>(productId));
+                return Ok(_mapper.Map<ProductReadDTO>(productId));
             }
             return NotFound();
         }
+
+        [HttpPost]
+        public ActionResult<ProductCreateDto> CreateProduct(ProductCreateDto productCreateDto)
+        {
+            var productCreate = _mapper.Map<Product>(productCreateDto);
+            _repository.CreateProduct(productCreate);
+
+            _repository.SaveChanges();
+
+            var productReadDto = _mapper.Map<ProductReadDTO>(productCreate);
+
+            return CreatedAtRoute(nameof(GetProductID), new { id = productReadDto.id }, productReadDto); //возвращает созданные данные через url/id
+        }
+
+        [HttpPut("{id}")]
+
+        public ActionResult UpdateProduct(int id, ProductUpDateDto productUpdateDto)
+        {
+            var productFromRepo = _repository.GetProductById(id);
+            
+            if (productFromRepo is null)
+            {
+                return NotFound();
+            }
+
+            _mapper.Map(productUpdateDto, productFromRepo);
+
+            _repository.UpdateProduct(productFromRepo);
+            _repository.SaveChanges();
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public ActionResult DeleteProduct(int id)
+        {
+            var productFromRepo = _repository.GetProductById(id);
+
+            if (productFromRepo is null)
+            {
+                return NotFound();
+            }
+
+            _repository.DeleteProduct(productFromRepo);
+
+            _repository.SaveChanges();
+
+            return NoContent();
+        }
+
     }
 }
